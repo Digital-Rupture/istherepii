@@ -17,8 +17,8 @@ This script is a standalone Bash utility. The easiest way to install it globally
 
 1.  **Clone the Repository:**
     ```bash
-    git clone [YOUR-REPO-URL]
-    cd [YOUR-REPO-NAME]
+    git clone https://github.com/Digital-Rupture/istherepii istherepii
+    cd istherepii
     ```
 
 2.  **Set Execute Permissions:**
