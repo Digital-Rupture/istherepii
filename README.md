@@ -43,7 +43,7 @@ The script automatically detects the input source:
 
 | Input Mode | Example Command |
 | :--- | :--- |
-| **Piped Input** (STDIN) | `curl -s http://example.com/data.txt | istherepii` |
+| **Piped Input** (STDIN) | `curl -s http://example.com/data.txt \| istherepii` |
 | **Direct Arguments** | `istherepii "123-45-6789" "user@example.com"` |
 | **File Input** | `istherepii -f test_data.txt` |
 
