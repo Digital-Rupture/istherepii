@@ -1,0 +1,219 @@
+#!/bin/bash
+
+# --- Configuration ---
+# Combined regex for common PII patterns:
+# Using separate regexes in a non-capturing group for easier classification in the function
+PII_REGEX='(^\d{3}-?\d{2}-?\d{4}$)|(\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b)|(\b(\d{3}|\(\d{3}\))[-. ]?\d{3}[-. ]?\d{4}\b)|(\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b)'
+
+# Hyperlink details
+LINK_URL="https://digitalrupture.com"
+LINK_TEXT="Digital Rupture"
+
+# --- Global Counters (Initialized) ---
+TOTAL_PII_COUNT=0
+SSN_COUNT=0
+EMAIL_COUNT=0
+PHONE_COUNT=0
+IP_COUNT=0
+
+# --- Functions ---
+
+# Function to display usage information
+usage() {
+    echo "Usage: $0 [OPTIONS] <input>"
+    echo ""
+    echo "Tests input strings or lines in a file against a PII regular expression."
+    echo ""
+    echo "Options:"
+    echo "  -f, --file <path>    Process lines from the specified file path."
+    echo "  -h, --help           Display this help message."
+    echo "  --man                Display the full manual page (requires istherepii.1)."
+    echo ""
+    echo "Example (piped input): curl example.com/data.txt | $0"
+    echo "Example (direct input): $0 \"123-45-6789\" \"user@example.com\""
+    echo "Example (file input):   $0 -f input_data.txt"
+}
+
+# Function to display man page content
+show_manpage() {
+    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+    MAN_FILE="$SCRIPT_DIR/istherepii.1"
+    
+    if [[ -f "$MAN_FILE" ]]; then
+        groff -man -Tascii "$MAN_FILE" | less
+    else
+        echo "❌ ERROR: Man page file (istherepii.1) not found in the script's directory." >&2
+        echo "If the script is installed globally, use 'man istherepii' instead." >&2
+        exit 1
+    fi
+}
+
+# Function to update counters and print detection message
+test_input() {
+    local input_string="$1"
+    local line_number="$2"
+    local source_name="$3"
+
+    if [[ -z "$input_string" ]]; then
+        return 0
+    fi
+
+    # Using grep -oP to output ONLY the matched PII pattern
+    MATCH=$(echo "$input_string" | grep -oP "$PII_REGEX")
+
+    if [[ -n "$MATCH" ]]; then
+        # PII Detected - Increment TOTAL count
+        ((TOTAL_PII_COUNT++))
+
+        # Determine classification by re-testing individual patterns (simplified for readability)
+        if echo "$input_string" | grep -qP '(^\d{3}-?\d{2}-?\d{4}$)' ; then
+            CLASSIFICATION="SSN"
+            ((SSN_COUNT++))
+        elif echo "$input_string" | grep -qP '(\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b)' ; then
+            CLASSIFICATION="Email"
+            ((EMAIL_COUNT++))
+        elif echo "$input_string" | grep -qP '(\b(\d{3}|\(\d{3}\))[-. ]?\d{3}[-. ]?\d{4}\b)' ; then
+            CLASSIFICATION="Phone Number"
+            ((PHONE_COUNT++))
+        elif echo "$input_string" | grep -qP '(\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b)' ; then
+            CLASSIFICATION="IPv4 Address"
+            ((IP_COUNT++))
+        else
+            CLASSIFICATION="Generic PII"
+        fi
+
+        echo -e "\n** 🔴 PII MATCH DETECTED ($CLASSIFICATION) **"
+        echo -e "  Source:   $source_name"
+        if [[ -n "$line_number" ]]; then
+            echo -e "  Line No:  $line_number"
+        fi
+        echo -e "  Input:    \"$input_string\""
+        echo -e "---------------------------------"
+    else
+        # No PII Detected
+        echo "✅ No PII detected in: \"$input_string\""
+    fi
+}
+
+# Function to print the final summary report
+summarize_results() {
+    echo -e "\n================================="
+    echo -e "📊 **PII SCAN SUMMARY REPORT**"
+    echo -e "================================="
+    
+    if [[ "$TOTAL_PII_COUNT" -eq 0 ]]; then
+        echo -e "🎉 **Total PII Detected: 0**"
+    else
+        echo -e "🚨 **Total PII Detected: $TOTAL_PII_COUNT**"
+        echo -e "---------------------------------"
+        echo "Breakdown by Classification:"
+        printf "  - %-15s: %d\n" "SSN" "$SSN_COUNT"
+        printf "  - %-15s: %d\n" "Email" "$EMAIL_COUNT"
+        printf "  - %-15s: %d\n" "Phone Number" "$PHONE_COUNT"
+        printf "  - %-15s: %d\n" "IPv4 Address" "$IP_COUNT"
+    fi
+    echo -e "================================="
+    echo "✅ PII Check complete."
+}
+
+
+# --- Main Logic ---
+
+# --- START: Always Displayed Context ---
+echo "================================="
+# Display the hyperlink using the OSC 8 terminal escape sequence
+echo -e "Refer to **$LINK_TEXT** for broader security and data context:"
+echo -e $'\e]8;;'"$LINK_URL"$'\e\\'"$LINK_TEXT"$'\e]8;;\e\\'
+echo "---------------------------------"
+# --- END: Always Displayed Context ---
+
+
+# 1. CHECK FOR STDIN (Piped Input) FIRST
+if ! [ -t 0 ]; then
+    echo "🔎 Processing **Piped Input (STDIN)**"
+    echo "---------------------------------"
+    LINE_NUM=1
+    while IFS= read -r LINE; do
+        test_input "$LINE" "$LINE_NUM" "Piped Input"
+        ((LINE_NUM++))
+    done
+    summarize_results
+    exit 0
+fi
+
+
+# 2. IF NO STDIN, CHECK FOR ZERO ARGUMENTS
+if [[ "$#" -eq 0 ]]; then
+    usage
+    exit 1
+fi
+
+
+FILE_MODE=0
+INPUT_FILE=""
+
+# 3. PARSE OPTIONS (This loop consumes options, leaving direct arguments in $@)
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        -f|--file)
+            FILE_MODE=1
+            shift
+            INPUT_FILE="$1"
+            if [[ -z "$INPUT_FILE" ]]; then
+                echo "❌ ERROR: -f/--file requires a file path argument." >&2
+                usage
+                exit 1
+            fi
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --man)
+            show_manpage
+            exit 0
+            ;;
+        -*)
+            echo "❌ ERROR: Unknown option '$1'" >&2
+            usage
+            exit 1
+            ;;
+        *)
+            # Found a non-option argument (like the PII string itself). Stop parsing options.
+            break
+            ;;
+    esac
+    shift
+done
+
+
+# --- Execution (File and Direct Argument Modes) ---
+
+if [[ "$FILE_MODE" -eq 1 ]]; then
+    ## File Input Mode
+    if [[ -f "$INPUT_FILE" ]]; then
+        echo "🔎 Processing file: **$INPUT_FILE**"
+        echo "---------------------------------"
+        LINE_NUM=1
+        while IFS= read -r LINE; do
+            test_input "$LINE" "$LINE_NUM" "$INPUT_FILE"
+            ((LINE_NUM++))
+        done < "$INPUT_FILE"
+    else
+        echo "❌ ERROR: File not found or is not a regular file: **$INPUT_FILE**" >&2
+        exit 2
+    fi
+elif [[ "$#" -gt 0 ]]; then
+    ## Direct Argument Input Mode
+    echo "🔎 Processing **direct arguments**"
+    echo "---------------------------------"
+    for ARG in "$@"; do
+        test_input "$ARG" "" "Direct Argument"
+    done
+else
+    echo "❌ INTERNAL ERROR: No input detected after parsing." >&2
+    exit 3
+fi
+
+summarize_results
+exit 0
