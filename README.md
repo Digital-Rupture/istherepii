@@ -34,7 +34,7 @@ This script is a standalone Bash utility. The easiest way to install it globally
 4.  **Install the Man Page Source:** (Moves the documentation source file to the global man directory, where the script can find it.)
     ```bash
     sudo mkdir -p /usr/local/share/man/man1/
-    sudo mv istherepii.1 /usr/local/share/man/man1/
+    sudo mv istherepii.1.gz /usr/local/share/man/man1/
     ```
 
 ## 💡 Usage Examples
