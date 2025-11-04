@@ -1,0 +1,17 @@
+# This is a comment line and should be ignored.
+No PII here, just some general text.
+
+User ID: 49750012
+
+Email Address: safe.user.2025@test-domain.io
+Phone Contact: (800) 555-1212
+SSN Candidate: 987-65-4321
+Local IP: 10.0.0.1
+Another IP: 172.31.255.254
+
+This line has a normal name: Jane Smith.
+This line has a phone number written poorly: 1234567890
+
+Invalid email format: not-an-email@.com
+Invalid IP: 256.256.256.256
+Invalid SSN (too many digits): 123-45-67890
