@@ -6,7 +6,7 @@ Refer to **[Digital Rupture](https://digitalrupture.com)** for broader security 
 
 ## ✨ Features
 
-* **Input Flexibility:** Scans input from **direct arguments**, a specified **file** (`-f`), or **piped STDIN** (e.g., `curl | istherepii`).
+* **Input Flexibility:** Scans input from **direct arguments**, a specified **file** (`-f`), or **piped STDIN** (e.g., `curl -s | istherepii`).
 * **Robust Detection:** Uses a consolidated regular expression for high-accuracy detection of common PII types (SSN, Email, Phone Number, IPv4).
 * **Summary Report:** Provides a final count and classification breakdown of all detected PII instances.
 * **System-Agnostic Documentation:** Documentation is built-in and accessible without needing special system configuration.
